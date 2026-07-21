@@ -1,20 +1,29 @@
+# Virtual Environment
 venv/
+env/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
-.env
-
-instance/
-
-uploads/
-
-*.db
-
-static/qr_codes/*.png
-static/appointment_*.pdf
-
+# VS Code
 .vscode/
 
-.idea/
+# Environment Variables
+.env
 
+# QR Codes
+static/qr_codes/*.png
+
+# Uploads
+uploads/
+
+# Logs
+*.log
+
+# macOS
 .DS_Store
+
+# Windows
+Thumbs.db
