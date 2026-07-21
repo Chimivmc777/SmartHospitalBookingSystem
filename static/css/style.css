@@ -1,0 +1,38 @@
+body{
+    background:#f4f8fb;
+}
+
+h1{
+    color:#0d6efd;
+}
+
+.navbar{
+    padding:15px;
+}
+body{
+    background:#f5f7fb;
+}
+
+.card{
+    border:none;
+    border-radius:20px;
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-8px);
+    box-shadow:0 20px 40px rgba(0,0,0,.15);
+}
+
+.btn{
+    border-radius:12px;
+}
+
+.navbar{
+    box-shadow:0 5px 20px rgba(0,0,0,.2);
+}
+
+.table{
+    border-radius:15px;
+    overflow:hidden;
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Schedules</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between mb-3">
+
+        <h2>📅 Doctor Schedules</h2>
+
+        <a href="/admin/add-schedule" class="btn btn-success">
+            ➕ Add Schedule
+        </a>
+
+    </div>
+
+    <table class="table table-bordered table-hover">
+
+        <thead class="table-dark">
+
+        <tr>
+            <th>ID</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+
+        </thead>
+
+        <tbody>
+
+        {% for schedule in schedules %}
+
+        <tr>
+
+            <td>{{ schedule[0] }}</td>
+            <td>{{ schedule[1] }}</td>
+            <td>{{ schedule[2] }}</td>
+            <td>{{ schedule[3] }}</td>
+            <td>{{ schedule[4] }}</td>
+            <td>{{ schedule[5] }}</td>
+
+            <td>
+
+                <a href="/admin/edit-schedule/{{ schedule[0] }}"
+                   class="btn btn-warning btn-sm">
+                    Edit
+                </a>
+
+                <a href="/admin/delete-schedule/{{ schedule[0] }}"
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete this schedule?')">
+                    Delete
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+    <a href="/admin/dashboard" class="btn btn-secondary">
+        ← Back
+    </a>
+
+</div>
+
+</body>
+</html>
