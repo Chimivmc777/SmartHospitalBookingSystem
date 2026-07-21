@@ -27,3 +27,10 @@ uploads/
 
 # Windows
 Thumbs.db
+
+venv/
+__pycache__/
+*.pyc
+.env
+uploads/
+static/qr_codes/
