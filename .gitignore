@@ -1,0 +1,21 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Uploads
+uploads/
+
+# QR Codes
+static/qr_codes/
+
+# Generated PDFs
+*.pdf
