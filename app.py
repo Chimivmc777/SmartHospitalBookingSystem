@@ -55,21 +55,28 @@ def send_email(to_email, subject, body):
 # ==========================
 # Database Connection
 # ==========================
+# ==========================
+# Database Connection
+# ==========================
 try:
+    print("DB_HOST =", DB_HOST)
+    print("DB_PORT =", DB_PORT)
+    print("DB_USER =", DB_USER)
+    print("DB_NAME =", DB_NAME)
+
     db = mysql.connector.connect(
-    host=DB_HOST,
-    port=DB_PORT,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    database=DB_NAME
-)
+        host=DB_HOST,
+        port=DB_PORT,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
     cursor = db.cursor()
     print("✅ Connected to MySQL successfully!")
 
 except mysql.connector.Error as err:
     print("❌ Database Connection Error:", err)
-
-
 # ==========================
 # Home Page
 # ==========================
