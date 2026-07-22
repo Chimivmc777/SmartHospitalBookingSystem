@@ -22,7 +22,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from flask import Flask, render_template, request, redirect, send_file, session
 import mysql.connector
 from werkzeug.security import generate_password_hash, check_password_hash
-from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
 app = Flask(__name__)
 app.secret_key = "smart_hospital_secret_key"
@@ -57,12 +57,12 @@ def send_email(to_email, subject, body):
 # ==========================
 try:
     db = mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME
-    )
-
+    host=DB_HOST,
+    port=DB_PORT,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME
+)
     cursor = db.cursor()
     print("✅ Connected to MySQL successfully!")
 
@@ -1837,5 +1837,8 @@ def appointment_pdf(id):
         as_attachment=True
     )
 
+import os
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
