@@ -55,24 +55,38 @@ def send_email(to_email, subject, body):
 # ==========================
 # Database Connection
 # ==========================
-# ==========================
-# Database Connection
-# ==========================
+
+def connect_db():
+    return mysql.connector.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
+        autocommit=True
+    )
+
+
+def reconnect_db():
+    global db, cursor
+
+    try:
+        db.ping(reconnect=True, attempts=3, delay=2)
+    except:
+        db = connect_db()
+
+    cursor = db.cursor()
+
+
 try:
     print("DB_HOST =", DB_HOST)
     print("DB_PORT =", DB_PORT)
     print("DB_USER =", DB_USER)
     print("DB_NAME =", DB_NAME)
 
-    db = mysql.connector.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME
-    )
-
+    db = connect_db()
     cursor = db.cursor()
+
     print("✅ Connected to MySQL successfully!")
 
 except mysql.connector.Error as err:
@@ -110,6 +124,8 @@ def register():
             VALUES (%s,%s,%s,%s,%s,%s,%s)
             """
 
+            reconnect_db()
+
             cursor.execute(sql,
                 (
                     name,
@@ -142,6 +158,8 @@ def login():
 
         email = request.form["email"]
         password = request.form["password"]
+
+        reconnect_db()
 
         cursor.execute(
             "SELECT * FROM patients WHERE email=%s",
@@ -209,6 +227,8 @@ def book():
 
         patient_id = session["patient_id"]
         schedule_id = request.form["schedule_id"]
+
+        reconnect_db()
 
         # Get schedule details
         cursor.execute("""
@@ -461,6 +481,8 @@ def doctor_login():
 
         email = request.form["email"]
         password = request.form["password"]
+
+        reconnect_db()
 
         cursor.execute(
             "SELECT * FROM doctors WHERE email=%s",
@@ -716,6 +738,8 @@ def admin_login():
 
         username = request.form["username"]
         password = request.form["password"]
+
+        reconnect_db()
 
         cursor.execute(
             "SELECT * FROM admins WHERE username=%s",
