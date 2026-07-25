@@ -87,7 +87,8 @@ def connect_db():
         autocommit=True
     )
 
-
+db = connect_db()
+cursor = db.cursor(buffered=True)
 def reconnect_db():
 
     global db
