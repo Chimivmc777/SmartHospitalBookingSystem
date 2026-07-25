@@ -115,15 +115,25 @@ def reconnect_db():
 
         db = connect_db()
         cursor = db.cursor(buffered=True)
-        seed_database()
-   
+        
 # ==========================
 # Seed Railway Database
 # ==========================
+print("=== DATABASE CHECK ===")
+
+cursor.execute("SELECT DATABASE()")
+print("Database:", cursor.fetchone())
+
+cursor.execute("SELECT COUNT(*) FROM departments")
+print("Departments:", cursor.fetchone())
+
+cursor.execute("SELECT COUNT(*) FROM doctors")
+print("Doctors:", cursor.fetchone())
+
+cursor.execute("SELECT COUNT(*) FROM doctor_schedule")
+print("Schedules:", cursor.fetchone())
 
 def seed_database():
-
-    reconnect_db()
 
     # -------------------------
     # Departments
