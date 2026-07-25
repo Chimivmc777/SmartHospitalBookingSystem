@@ -469,26 +469,29 @@ Thank you for choosing Smart Hospital.
     # -----------------------------
     # LOAD AVAILABLE SCHEDULES
     # -----------------------------
+   # -----------------------------
+    # LOAD AVAILABLE SCHEDULES
+    # -----------------------------
     reconnect_db()
 
     cursor.execute("""
         SELECT
-            s.schedule_id,
+            ds.schedule_id,
             d.name,
             d.specialization,
-            s.available_date,
-            s.start_time,
-            s.end_time
-        FROM doctor_schedule s
-        INNER JOIN doctors d
-            ON s.doctor_id = d.doctor_id
-        WHERE s.status='Available'
-        ORDER BY s.available_date, s.start_time
+            ds.available_date,
+            ds.start_time,
+            ds.end_time
+        FROM doctor_schedule ds
+        JOIN doctors d
+        ON ds.doctor_id = d.doctor_id
+        WHERE ds.status = 'Available'
+        ORDER BY ds.available_date, ds.start_time
     """)
 
     schedules = cursor.fetchall()
 
-    print("Schedules =", schedules)
+    print("Schedules:", schedules)
 
     return render_template(
         "book.html",
