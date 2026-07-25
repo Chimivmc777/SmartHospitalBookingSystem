@@ -6,6 +6,7 @@ from reportlab.lib.units import inch
 import os
 import qrcode
 import os
+import traceback
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -143,6 +144,7 @@ def register():
             return redirect("/login")
 
         except mysql.connector.Error as err:
+            traceback.print_exc()
             return f"Database Error : {err}"
 
     return render_template("register.html")
@@ -220,24 +222,33 @@ def dashboard():
 @app.route("/book", methods=["GET", "POST"])
 def book():
 
+    # -----------------------------
+    # Patient must be logged in
+    # -----------------------------
     if "patient_id" not in session:
         return redirect("/login")
 
     reconnect_db()
 
+    # -----------------------------
+    # BOOK APPOINTMENT
+    # -----------------------------
     if request.method == "POST":
 
         try:
+
             patient_id = session["patient_id"]
             schedule_id = request.form["schedule_id"]
 
             reconnect_db()
 
-            # Get selected schedule
+            # Get schedule details
             cursor.execute("""
-                SELECT doctor_id,
-                       available_date,
-                       start_time
+                SELECT
+                    doctor_id,
+                    available_date,
+                    start_time,
+                    status
                 FROM doctor_schedule
                 WHERE schedule_id=%s
             """, (schedule_id,))
@@ -245,26 +256,37 @@ def book():
             schedule = cursor.fetchone()
 
             if schedule is None:
-                return "Invalid Schedule Selected!"
+                return "Invalid Schedule."
 
             doctor_id = schedule[0]
             appointment_date = schedule[1]
             appointment_time = schedule[2]
+            schedule_status = schedule[3]
 
-            # Check if patient already booked same schedule
+            if schedule_status != "Available":
+                return "This appointment slot is already booked."
+
+            # Prevent duplicate booking
             cursor.execute("""
-                SELECT *
+                SELECT appointment_id
                 FROM appointments
                 WHERE patient_id=%s
                 AND schedule_id=%s
             """, (patient_id, schedule_id))
 
-            existing = cursor.fetchone()
+            if cursor.fetchone():
+                return """
+                <h3 style='text-align:center;color:red;'>
+                You already booked this appointment.
+                </h3>
+                <center>
+                    <a href="/appointments">My Appointments</a>
+                </center>
+                """
 
-            if existing:
-                return "You have already booked this appointment."
-
-            # Insert appointment
+            # -----------------------------
+            # Save appointment
+            # -----------------------------
             cursor.execute("""
                 INSERT INTO appointments
                 (
@@ -274,7 +296,8 @@ def book():
                     appointment_date,
                     appointment_time
                 )
-                VALUES (%s,%s,%s,%s,%s)
+                VALUES
+                (%s,%s,%s,%s,%s)
             """,
             (
                 patient_id,
@@ -286,56 +309,14 @@ def book():
 
             db.commit()
 
-            # Optional: Mark schedule unavailable
-            cursor.execute("""
-                UPDATE doctor_schedule
-                SET status='Booked'
-                WHERE schedule_id=%s
-            """, (schedule_id,))
+            appointment_id = cursor.lastrowid
 
-            db.commit()
+            # -----------------------------
+            # Generate QR Code
+            # -----------------------------
+            os.makedirs("static/qr_codes", exist_ok=True)
 
-            return redirect("/appointments")
-
-        except Exception as e:
-            print("BOOK ERROR:", e)
-            return f"Booking Error: {e}"
-
-    # ==========================
-    # GET REQUEST
-    # ==========================
-
-    reconnect_db()
-
-    cursor.execute("""
-        SELECT
-            s.schedule_id,
-            d.name,
-            d.specialization,
-            s.available_date,
-            s.start_time,
-            s.end_time
-        FROM doctor_schedule s
-        JOIN doctors d
-            ON s.doctor_id = d.doctor_id
-        WHERE s.status='Available'
-        ORDER BY s.available_date, s.start_time
-    """)
-
-    schedules = cursor.fetchall()
-
-    return render_template(
-        "book.html",
-        schedules=schedules
-    )
-
-        # =====================================
-        # Generate QR Code
-        # =====================================
-
-        appointment_id = cursor.lastrowid
-
-        qr_data = f"""
+            qr_data = f"""
 Appointment ID: {appointment_id}
 Patient ID: {patient_id}
 Doctor ID: {doctor_id}
@@ -344,70 +325,78 @@ Time: {appointment_time}
 Status: Pending
 """
 
-        qr = qrcode.make(qr_data)
+            qr = qrcode.make(qr_data)
 
-        qr_path = os.path.join(
-            "static",
-            "qr_codes",
-            f"{appointment_id}.png"
-        )
+            qr.save(
+                os.path.join(
+                    "static",
+                    "qr_codes",
+                    f"{appointment_id}.png"
+                )
+            )
 
-        qr.save(qr_path)
+            # -----------------------------
+            # Patient Notification
+            # -----------------------------
+            cursor.execute("""
+                INSERT INTO notifications
+                (patient_id, message)
+                VALUES(%s,%s)
+            """,
+            (
+                patient_id,
+                "📅 Your appointment has been booked successfully."
+            ))
 
-        # =====================================
-        # Notification for Patient
-        # =====================================
+            # -----------------------------
+            # Doctor Notification
+            # -----------------------------
+            cursor.execute("""
+                INSERT INTO notifications
+                (doctor_id, message)
+                VALUES(%s,%s)
+            """,
+            (
+                doctor_id,
+                "📅 You have received a new appointment."
+            ))
 
-        cursor.execute("""
-            INSERT INTO notifications
-            (patient_id, message)
-            VALUES(%s,%s)
-        """,
-        (
-            patient_id,
-            "📅 Your appointment has been booked successfully."
-        ))
+            # -----------------------------
+            # Mark schedule booked
+            # -----------------------------
+            cursor.execute("""
+                UPDATE doctor_schedule
+                SET status='Booked'
+                WHERE schedule_id=%s
+            """, (schedule_id,))
 
-        # =====================================
-        # Notification for Doctor
-        # =====================================
+            db.commit()
 
-        cursor.execute("""
-            INSERT INTO notifications
-            (doctor_id, message)
-            VALUES(%s,%s)
-        """,
-        (
-            doctor_id,
-            "📅 You have received a new appointment."
-        ))
-
-        db.commit()
-
-        # =====================================
-        # Send Email
-        # =====================================
-
-        cursor.execute("""
-            SELECT
-                p.name,
-                p.email,
-                d.name
-            FROM patients p
-            JOIN doctors d
+            # -----------------------------
+            # Email
+            # -----------------------------
+            cursor.execute("""
+                SELECT
+                    p.name,
+                    p.email,
+                    d.name
+                FROM patients p
+                JOIN doctors d
                 ON d.doctor_id=%s
-            WHERE p.patient_id=%s
-        """,
-        (
-            doctor_id,
-            patient_id
-        ))
+                WHERE p.patient_id=%s
+            """,
+            (
+                doctor_id,
+                patient_id
+            ))
 
-        patient = cursor.fetchone()
+            patient = cursor.fetchone()
 
-        subject = "Appointment Booked - Smart Hospital"
+            if patient:
 
-        body = f"""
+                subject = "Appointment Booked - Smart Hospital"
+
+                body = f"""
 Dear {patient[0]},
 
 Your appointment has been booked successfully.
@@ -423,48 +412,65 @@ Time : {appointment_time}
 Status : Pending
 
 Thank you for choosing Smart Hospital.
-
-Regards,
-Smart Hospital Team
 """
 
-        send_email(
-            patient[1],
-            subject,
-            body
-        )
+                send_email(
+                    patient[1],
+                    subject,
+                    body
+                )
 
-        # =====================================
-        # Redirect to Receipt
-        # =====================================
+            # -----------------------------
+            # Receipt
+            # -----------------------------
+            return redirect(f"/appointment_receipt/{appointment_id}")
 
-        return redirect(f"/appointment_receipt/{appointment_id}")
+        except Exception:
 
-    # =====================================
-    # Show Available Schedules
-    # =====================================
+            traceback.print_exc()
+
+            return f"""
+            <h2 style='color:red;text-align:center'>
+            Booking Failed
+            </h2>
+
+            <pre>
+{traceback.format_exc()}
+            </pre>
+
+            <center>
+                <a href="/book">Go Back</a>
+            </center>
+            """
+
+    # -----------------------------
+    # LOAD AVAILABLE SCHEDULES
+    # -----------------------------
+    reconnect_db()
 
     cursor.execute("""
         SELECT
-            ds.schedule_id,
+            s.schedule_id,
             d.name,
             d.specialization,
-            ds.available_date,
-            ds.start_time,
-            ds.end_time
-        FROM doctor_schedule ds
+            s.available_date,
+            s.start_time,
+            s.end_time
+        FROM doctor_schedule s
         JOIN doctors d
-            ON ds.doctor_id=d.doctor_id
-        WHERE ds.status='Available'
+            ON s.doctor_id=d.doctor_id
+        WHERE s.status='Available'
+        ORDER BY
+            s.available_date,
+            s.start_time
     """)
 
     schedules = cursor.fetchall()
 
     return render_template(
-        "book_appointment.html",
+        "book.html",
         schedules=schedules
     )
-
 # ==========================
 # My Appointments
 # ==========================
