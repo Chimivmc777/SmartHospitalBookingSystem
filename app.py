@@ -5,8 +5,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 import os
 import qrcode
-import os
 import traceback
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -144,7 +144,6 @@ def register():
             return redirect("/login")
 
         except mysql.connector.Error as err:
-            traceback.print_exc()
             return f"Database Error : {err}"
 
     return render_template("register.html")
@@ -414,11 +413,14 @@ Status : Pending
 Thank you for choosing Smart Hospital.
 """
 
-                send_email(
-                    patient[1],
-                    subject,
-                    body
-                )
+                try:
+    send_email(
+        patient[1],
+        subject,
+        body
+    )
+except Exception as e:
+    print("Email Error:", e)
 
             # -----------------------------
             # Receipt
@@ -471,56 +473,40 @@ Thank you for choosing Smart Hospital.
         "book.html",
         schedules=schedules
     )
+
 # ==========================
 # My Appointments
 # ==========================
 @app.route("/appointments")
 def appointments():
 
-    # Check if patient is logged in
     if "patient_id" not in session:
         return redirect("/login")
 
-    try:
-        reconnect_db()
+    patient_id = session["patient_id"]
 
-        patient_id = session["patient_id"]
+    cursor.execute("""
+    SELECT
+        a.appointment_id,
+        d.name,
+        d.specialization,
+        a.appointment_date,
+        a.appointment_time,
+        a.status
+    FROM appointments a
+    JOIN doctors d
+    ON a.doctor_id=d.doctor_id
+    WHERE a.patient_id=%s
+    ORDER BY a.appointment_date
+    """, (patient_id,))
 
-        cursor.execute("""
-            SELECT
-                a.appointment_id,
-                d.name,
-                d.specialization,
-                a.appointment_date,
-                a.appointment_time,
-                a.status
-            FROM appointments a
-            JOIN doctors d
-                ON a.doctor_id = d.doctor_id
-            WHERE a.patient_id = %s
-            ORDER BY a.appointment_date DESC,
-                     a.appointment_time DESC
-        """, (patient_id,))
+    appointments = cursor.fetchall()
 
-        appointments = cursor.fetchall()
+    return render_template(
+        "appointments.html",
+        appointments=appointments
+    )
 
-        return render_template(
-            "appointments.html",
-            appointments=appointments
-        )
-
-    except Exception as e:
-        print("APPOINTMENTS ERROR:", e)
-        return f"""
-        <h2 style='color:red;text-align:center'>
-            Error Loading Appointments
-        </h2>
-
-        <center>
-            <p>{e}</p>
-            <a href="/dashboard">Back to Dashboard</a>
-        </center>
-        """
 
 # ==========================
 # Logout
