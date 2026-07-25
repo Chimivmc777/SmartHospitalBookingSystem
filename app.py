@@ -115,20 +115,11 @@ def reconnect_db():
 
         db = connect_db()
         cursor = db.cursor(buffered=True)
-
-    print("✅ Connected to Database")
-    seed_database()
-    print("✅ Seed Function Finished")
+        seed_database()
+   
 # ==========================
 # Seed Railway Database
 # ==========================
-def seed_database():
-
-    print("🚀 seed_database() is running")
-
-    reconnect_db()
-
-    ...
 
 def seed_database():
 
