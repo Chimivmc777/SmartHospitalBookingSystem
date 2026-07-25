@@ -89,6 +89,7 @@ def connect_db():
 
 db = connect_db()
 cursor = db.cursor(buffered=True)
+
 def reconnect_db():
 
     global db
@@ -331,9 +332,9 @@ def book():
 
             appointment_id = cursor.lastrowid
 
-            # -----------------------------
-            # Generate QR Code
-            # -----------------------------
+# -----------------------------
+# Generate QR Code
+# -----------------------------
             os.makedirs("static/qr_codes", exist_ok=True)
 
             qr_data = f"""
@@ -355,9 +356,9 @@ Status: Pending
                 )
             )
 
-            # -----------------------------
-            # Patient Notification
-            # -----------------------------
+# -----------------------------
+# Patient Notification
+# -----------------------------
             cursor.execute("""
                 INSERT INTO notifications
                 (patient_id, message)
@@ -470,29 +471,29 @@ Thank you for choosing Smart Hospital.
     # -----------------------------
     reconnect_db()
 
-    cursor.execute("""
-        SELECT
-            s.schedule_id,
-            d.name,
-            d.specialization,
-            s.available_date,
-            s.start_time,
-            s.end_time
-        FROM doctor_schedule s
-        JOIN doctors d
-            ON s.doctor_id=d.doctor_id
-        WHERE s.status='Available'
-        ORDER BY
-            s.available_date,
-            s.start_time
-    """)
+cursor.execute("""
+    SELECT
+        s.schedule_id,
+        d.name,
+        d.specialization,
+        s.available_date,
+        s.start_time,
+        s.end_time
+    FROM doctor_schedule s
+    INNER JOIN doctors d
+        ON s.doctor_id = d.doctor_id
+    WHERE s.status='Available'
+    ORDER BY s.available_date, s.start_time
+""")
 
     schedules = cursor.fetchall()
 
-    return render_template(
-        "book.html",
-        schedules=schedules
-    )
+print("Schedules =", schedules)
+
+return render_template(
+    "book.html",
+    schedules=schedules
+)
 
 # ==========================
 # My Appointments
@@ -528,7 +529,6 @@ def appointments():
         "appointments.html",
         appointments=appointments
     )
-
 
 # ==========================
 # Logout
