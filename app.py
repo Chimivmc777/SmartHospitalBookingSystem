@@ -89,29 +89,29 @@ def connect_db():
 
 
 def reconnect_db():
-    global db, cursor
+
+    global db
+    global cursor
 
     try:
-        db.ping(reconnect=True, attempts=3, delay=2)
-    except:
+
+        if db is None or not db.is_connected():
+
+            db = connect_db()
+
+        cursor = db.cursor(buffered=True)
+
+    except Exception as e:
+
+        print("Reconnect Error:", e)
+
         db = connect_db()
 
-    cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
 
+        db = connect_db()
+cursor = db.cursor(buffered=True)
 
-try:
-    print("DB_HOST =", DB_HOST)
-    print("DB_PORT =", DB_PORT)
-    print("DB_USER =", DB_USER)
-    print("DB_NAME =", DB_NAME)
-
-    db = connect_db()
-    cursor = db.cursor()
-
-    print("✅ Connected to MySQL successfully!")
-
-except mysql.connector.Error as err:
-    print("❌ Database Connection Error:", err)
 # ==========================
 # Home Page
 # ==========================
@@ -502,21 +502,23 @@ def appointments():
     if "patient_id" not in session:
         return redirect("/login")
 
+    reconnect_db()
+
     patient_id = session["patient_id"]
 
     cursor.execute("""
-    SELECT
-        a.appointment_id,
-        d.name,
-        d.specialization,
-        a.appointment_date,
-        a.appointment_time,
-        a.status
-    FROM appointments a
-    JOIN doctors d
-    ON a.doctor_id=d.doctor_id
-    WHERE a.patient_id=%s
-    ORDER BY a.appointment_date
+        SELECT
+            a.appointment_id,
+            d.name,
+            d.specialization,
+            a.appointment_date,
+            a.appointment_time,
+            a.status
+        FROM appointments a
+        JOIN doctors d
+            ON a.doctor_id = d.doctor_id
+        WHERE a.patient_id=%s
+        ORDER BY a.appointment_date
     """, (patient_id,))
 
     appointments = cursor.fetchall()
