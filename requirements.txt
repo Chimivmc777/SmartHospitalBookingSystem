@@ -16,3 +16,4 @@ qrcode==8.2
 reportlab==5.0.0
 Werkzeug==3.1.8
 python-dotenv==1.1.1
+Faker==38.2.0

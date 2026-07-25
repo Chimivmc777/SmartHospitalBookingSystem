@@ -223,52 +223,111 @@ def book():
     if "patient_id" not in session:
         return redirect("/login")
 
+    reconnect_db()
+
     if request.method == "POST":
 
-        patient_id = session["patient_id"]
-        schedule_id = request.form["schedule_id"]
+        try:
+            patient_id = session["patient_id"]
+            schedule_id = request.form["schedule_id"]
 
-        reconnect_db()
+            reconnect_db()
 
-        # Get schedule details
-        cursor.execute("""
-            SELECT doctor_id,
-                   available_date,
-                   start_time
-            FROM doctor_schedule
-            WHERE schedule_id=%s
-        """, (schedule_id,))
+            # Get selected schedule
+            cursor.execute("""
+                SELECT doctor_id,
+                       available_date,
+                       start_time
+                FROM doctor_schedule
+                WHERE schedule_id=%s
+            """, (schedule_id,))
 
-        schedule = cursor.fetchone()
+            schedule = cursor.fetchone()
 
-        if schedule is None:
-            return "Invalid Schedule"
+            if schedule is None:
+                return "Invalid Schedule Selected!"
 
-        doctor_id = schedule[0]
-        appointment_date = schedule[1]
-        appointment_time = schedule[2]
+            doctor_id = schedule[0]
+            appointment_date = schedule[1]
+            appointment_time = schedule[2]
 
-        # Save appointment
-        cursor.execute("""
-            INSERT INTO appointments
+            # Check if patient already booked same schedule
+            cursor.execute("""
+                SELECT *
+                FROM appointments
+                WHERE patient_id=%s
+                AND schedule_id=%s
+            """, (patient_id, schedule_id))
+
+            existing = cursor.fetchone()
+
+            if existing:
+                return "You have already booked this appointment."
+
+            # Insert appointment
+            cursor.execute("""
+                INSERT INTO appointments
+                (
+                    patient_id,
+                    doctor_id,
+                    schedule_id,
+                    appointment_date,
+                    appointment_time
+                )
+                VALUES (%s,%s,%s,%s,%s)
+            """,
             (
                 patient_id,
                 doctor_id,
                 schedule_id,
                 appointment_date,
                 appointment_time
-            )
-            VALUES (%s,%s,%s,%s,%s)
-        """,
-        (
-            patient_id,
-            doctor_id,
-            schedule_id,
-            appointment_date,
-            appointment_time
-        ))
+            ))
 
-        db.commit()
+            db.commit()
+
+            # Optional: Mark schedule unavailable
+            cursor.execute("""
+                UPDATE doctor_schedule
+                SET status='Booked'
+                WHERE schedule_id=%s
+            """, (schedule_id,))
+
+            db.commit()
+
+            return redirect("/appointments")
+
+        except Exception as e:
+            print("BOOK ERROR:", e)
+            return f"Booking Error: {e}"
+
+    # ==========================
+    # GET REQUEST
+    # ==========================
+
+    reconnect_db()
+
+    cursor.execute("""
+        SELECT
+            s.schedule_id,
+            d.name,
+            d.specialization,
+            s.available_date,
+            s.start_time,
+            s.end_time
+        FROM doctor_schedule s
+        JOIN doctors d
+            ON s.doctor_id = d.doctor_id
+        WHERE s.status='Available'
+        ORDER BY s.available_date, s.start_time
+    """)
+
+    schedules = cursor.fetchall()
+
+    return render_template(
+        "book.html",
+        schedules=schedules
+    )
 
         # =====================================
         # Generate QR Code
@@ -412,33 +471,50 @@ Smart Hospital Team
 @app.route("/appointments")
 def appointments():
 
+    # Check if patient is logged in
     if "patient_id" not in session:
         return redirect("/login")
 
-    patient_id = session["patient_id"]
+    try:
+        reconnect_db()
 
-    cursor.execute("""
-    SELECT
-        a.appointment_id,
-        d.name,
-        d.specialization,
-        a.appointment_date,
-        a.appointment_time,
-        a.status
-    FROM appointments a
-    JOIN doctors d
-    ON a.doctor_id=d.doctor_id
-    WHERE a.patient_id=%s
-    ORDER BY a.appointment_date
-    """, (patient_id,))
+        patient_id = session["patient_id"]
 
-    appointments = cursor.fetchall()
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                d.name,
+                d.specialization,
+                a.appointment_date,
+                a.appointment_time,
+                a.status
+            FROM appointments a
+            JOIN doctors d
+                ON a.doctor_id = d.doctor_id
+            WHERE a.patient_id = %s
+            ORDER BY a.appointment_date DESC,
+                     a.appointment_time DESC
+        """, (patient_id,))
 
-    return render_template(
-        "appointments.html",
-        appointments=appointments
-    )
+        appointments = cursor.fetchall()
 
+        return render_template(
+            "appointments.html",
+            appointments=appointments
+        )
+
+    except Exception as e:
+        print("APPOINTMENTS ERROR:", e)
+        return f"""
+        <h2 style='color:red;text-align:center'>
+            Error Loading Appointments
+        </h2>
+
+        <center>
+            <p>{e}</p>
+            <a href="/dashboard">Back to Dashboard</a>
+        </center>
+        """
 
 # ==========================
 # Logout
