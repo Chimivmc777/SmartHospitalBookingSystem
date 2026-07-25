@@ -77,18 +77,31 @@ def send_email(to_email, subject, body):
 # Database Connection
 # ==========================
 
+# ==========================
+# Database Connection
+# ==========================
+
+# ==========================
+# Database Connection
+# ==========================
+
 def connect_db():
+
     return mysql.connector.connect(
+
         host=DB_HOST,
         port=DB_PORT,
         user=DB_USER,
         password=DB_PASSWORD,
         database=DB_NAME,
         autocommit=True
+
     )
+
 
 db = connect_db()
 cursor = db.cursor(buffered=True)
+
 
 def reconnect_db():
 
@@ -108,12 +121,182 @@ def reconnect_db():
         print("Reconnect Error:", e)
 
         db = connect_db()
-
         cursor = db.cursor(buffered=True)
 
-        db = connect_db()
-cursor = db.cursor(buffered=True)
 
+# ==========================
+# Seed Railway Database
+# ==========================
+
+def seed_database():
+
+    reconnect_db()
+
+    # -------------------------
+    # Departments
+    # -------------------------
+
+    cursor.execute("SELECT COUNT(*) FROM departments")
+
+    if cursor.fetchone()[0] == 0:
+
+        departments = [
+
+            ("Cardiology","Heart Specialist"),
+            ("Orthopedics","Bone Specialist"),
+            ("Dermatology","Skin Specialist")
+
+        ]
+
+        cursor.executemany("""
+
+            INSERT INTO departments
+            (
+                department_name,
+                description
+            )
+
+            VALUES
+            (%s,%s)
+
+        """, departments)
+
+        db.commit()
+
+        print("Departments Seeded")
+
+
+    # -------------------------
+    # Doctors
+    # -------------------------
+
+    cursor.execute("SELECT COUNT(*) FROM doctors")
+
+    if cursor.fetchone()[0] == 0:
+
+        doctors = [
+
+            (
+                1,
+                "Dr. Sharma",
+                "Cardiologist",
+                10,
+                "sharma@gmail.com",
+                "980000001",
+                "1234"
+            ),
+
+            (
+                2,
+                "Dr. Gupta",
+                "Orthopedic Surgeon",
+                8,
+                "gupta@gmail.com",
+                "980000002",
+                "1234"
+            ),
+
+            (
+                3,
+                "Dr. Das",
+                "Skin Specialist",
+                6,
+                "das@gmail.com",
+                "980000003",
+                "1234"
+            )
+
+        ]
+
+        cursor.executemany("""
+
+            INSERT INTO doctors
+
+            (
+                department_id,
+                name,
+                specialization,
+                experience,
+                email,
+                phone,
+                password
+            )
+
+            VALUES
+
+            (%s,%s,%s,%s,%s,%s,%s)
+
+        """, doctors)
+
+        db.commit()
+
+        print("Doctors Seeded")
+
+
+    # -------------------------
+    # Doctor Schedule
+    # -------------------------
+
+    cursor.execute("SELECT COUNT(*) FROM doctor_schedule")
+
+    if cursor.fetchone()[0] == 0:
+
+        schedules = [
+
+            (
+                1,
+                "2026-08-01",
+                "09:00:00",
+                "12:00:00",
+                "Available"
+            ),
+
+            (
+                2,
+                "2026-08-01",
+                "10:00:00",
+                "13:00:00",
+                "Available"
+            ),
+
+            (
+                3,
+                "2026-08-02",
+                "09:30:00",
+                "12:30:00",
+                "Available"
+            )
+
+        ]
+
+        cursor.executemany("""
+
+            INSERT INTO doctor_schedule
+
+            (
+                doctor_id,
+                available_date,
+                start_time,
+                end_time,
+                status
+            )
+
+            VALUES
+
+            (%s,%s,%s,%s,%s)
+
+        """, schedules)
+
+        db.commit()
+
+        print("Doctor Schedule Seeded")
+
+
+# ==========================
+# Run Once
+# ==========================
+
+seed_database()
 # ==========================
 # Home Page
 # ==========================
