@@ -33,25 +33,45 @@ def send_email(to_email, subject, body):
     sender_email = "chimininja777@gmail.com"
     sender_password = "zdfo qcsz oxtl wzxi"
 
-    message = MIMEMultipart()
-    message["From"] = sender_email
-    message["To"] = to_email
-    message["Subject"] = subject
+    try:
 
-    message.attach(MIMEText(body, "plain"))
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = to_email
+        message["Subject"] = subject
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
+        message.attach(MIMEText(body, "plain"))
 
-    server.login(sender_email, sender_password)
+        server = smtplib.SMTP(
+            "smtp.gmail.com",
+            587,
+            timeout=10
+        )
 
-    server.sendmail(
-        sender_email,
-        to_email,
-        message.as_string()
-    )
+        server.starttls()
 
-    server.quit()
+        server.login(
+            sender_email,
+            sender_password
+        )
+
+        server.sendmail(
+            sender_email,
+            to_email,
+            message.as_string()
+        )
+
+        server.quit()
+
+        print("✅ Email Sent Successfully")
+
+        return True
+
+    except Exception as e:
+
+        print("❌ EMAIL ERROR:", e)
+
+        return False
 
 # ==========================
 # Database Connection
@@ -388,7 +408,6 @@ Status: Pending
                 doctor_id,
                 patient_id
             ))
-
             patient = cursor.fetchone()
 
             if patient:
@@ -414,13 +433,13 @@ Thank you for choosing Smart Hospital.
 """
 
                 try:
-    send_email(
-        patient[1],
-        subject,
-        body
-    )
-except Exception as e:
-    print("Email Error:", e)
+                    send_email(
+                        patient[1],
+                        subject,
+                        body
+                    )
+                except Exception as e:
+                    print("Email Error:", e)
 
             # -----------------------------
             # Receipt
