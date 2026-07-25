@@ -73,13 +73,6 @@ def send_email(to_email, subject, body):
 
         return False
 
-# ==========================
-# Database Connection
-# ==========================
-
-# ==========================
-# Database Connection
-# ==========================
 
 # ==========================
 # Database Connection
@@ -123,10 +116,19 @@ def reconnect_db():
         db = connect_db()
         cursor = db.cursor(buffered=True)
 
-
+    print("✅ Connected to Database")
+    seed_database()
+    print("✅ Seed Function Finished")
 # ==========================
 # Seed Railway Database
 # ==========================
+def seed_database():
+
+    print("🚀 seed_database() is running")
+
+    reconnect_db()
+
+    ...
 
 def seed_database():
 
