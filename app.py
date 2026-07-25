@@ -471,29 +471,29 @@ Thank you for choosing Smart Hospital.
     # -----------------------------
     reconnect_db()
 
-cursor.execute("""
-    SELECT
-        s.schedule_id,
-        d.name,
-        d.specialization,
-        s.available_date,
-        s.start_time,
-        s.end_time
-    FROM doctor_schedule s
-    INNER JOIN doctors d
-        ON s.doctor_id = d.doctor_id
-    WHERE s.status='Available'
-    ORDER BY s.available_date, s.start_time
-""")
+    cursor.execute("""
+        SELECT
+            s.schedule_id,
+            d.name,
+            d.specialization,
+            s.available_date,
+            s.start_time,
+            s.end_time
+        FROM doctor_schedule s
+        INNER JOIN doctors d
+            ON s.doctor_id = d.doctor_id
+        WHERE s.status='Available'
+        ORDER BY s.available_date, s.start_time
+    """)
 
     schedules = cursor.fetchall()
 
-print("Schedules =", schedules)
+    print("Schedules =", schedules)
 
-return render_template(
-    "book.html",
-    schedules=schedules
-)
+    return render_template(
+        "book.html",
+        schedules=schedules
+    )
 
 # ==========================
 # My Appointments
