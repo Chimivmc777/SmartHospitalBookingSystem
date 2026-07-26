@@ -653,14 +653,15 @@ Thank you for choosing Smart Hospital.
             </center>
             """
 
-    # -----------------------------
-    # LOAD AVAILABLE SCHEDULES (GET request)
+        # -----------------------------
+    # LOAD AVAILABLE SCHEDULES
     # -----------------------------
     reconnect_db()
 
     cursor.execute("""
         SELECT
             s.schedule_id,
+            s.doctor_id,
             d.name,
             d.specialization,
             s.available_date,
@@ -668,15 +669,14 @@ Thank you for choosing Smart Hospital.
             s.end_time,
             s.status
         FROM doctor_schedule s
-        JOIN doctors d
+        LEFT JOIN doctors d
         ON s.doctor_id = d.doctor_id
-        WHERE s.status = 'Available'  -- Only show available slots
         ORDER BY s.available_date, s.start_time
     """)
 
     schedules = cursor.fetchall()
 
-    print("Schedules =", schedules)  # Remove in production
+    print("Schedules =", schedules)
 
     return render_template(
         "book.html",
