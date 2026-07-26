@@ -435,7 +435,7 @@ def book():
     if "patient_id" not in session:
         return redirect("/login")
 
-    reconnect_db()
+    reconnect_db()  # Make sure this function is defined
 
     # -----------------------------
     # BOOK APPOINTMENT
@@ -443,9 +443,11 @@ def book():
     if request.method == "POST":
 
         try:
-
             patient_id = session["patient_id"]
-            schedule_id = request.form["schedule_id"]
+            schedule_id = request.form.get("schedule_id")  # Use .get() to avoid KeyError
+
+            if not schedule_id:
+                return "Schedule ID is required."
 
             reconnect_db()
 
@@ -501,26 +503,28 @@ def book():
                     doctor_id,
                     schedule_id,
                     appointment_date,
-                    appointment_time
+                    appointment_time,
+                    status  # Added status field
                 )
                 VALUES
-                (%s,%s,%s,%s,%s)
+                (%s,%s,%s,%s,%s,%s)
             """,
             (
                 patient_id,
                 doctor_id,
                 schedule_id,
                 appointment_date,
-                appointment_time
+                appointment_time,
+                'Pending'  # Default status
             ))
 
             db.commit()
 
             appointment_id = cursor.lastrowid
 
-# -----------------------------
-# Generate QR Code
-# -----------------------------
+            # -----------------------------
+            # Generate QR Code
+            # -----------------------------
             os.makedirs("static/qr_codes", exist_ok=True)
 
             qr_data = f"""
@@ -534,17 +538,16 @@ Status: Pending
 
             qr = qrcode.make(qr_data)
 
-            qr.save(
-                os.path.join(
-                    "static",
-                    "qr_codes",
-                    f"{appointment_id}.png"
-                )
+            qr_path = os.path.join(
+                "static",
+                "qr_codes",
+                f"{appointment_id}.png"
             )
+            qr.save(qr_path)
 
-# -----------------------------
-# Patient Notification
-# -----------------------------
+            # -----------------------------
+            # Patient Notification
+            # -----------------------------
             cursor.execute("""
                 INSERT INTO notifications
                 (patient_id, message)
@@ -599,9 +602,8 @@ Status: Pending
             patient = cursor.fetchone()
 
             if patient:
-
                 subject = "Appointment Booked - Smart Hospital"
-
+                
                 body = f"""
 Dear {patient[0]},
 
@@ -628,35 +630,31 @@ Thank you for choosing Smart Hospital.
                     )
                 except Exception as e:
                     print("Email Error:", e)
+                    # Don't fail the booking if email fails
 
             # -----------------------------
-            # Receipt
+            # Redirect to receipt
             # -----------------------------
             return redirect(f"/appointment_receipt/{appointment_id}")
 
-        except Exception:
-
+        except Exception as e:
             traceback.print_exc()
-
+            db.rollback()  # Rollback on error
+            
             return f"""
             <h2 style='color:red;text-align:center'>
             Booking Failed
             </h2>
-
-            <pre>
-{traceback.format_exc()}
-            </pre>
-
+            <p style='text-align:center;color:red;'>
+            Error: {str(e)}
+            </p>
             <center>
                 <a href="/book">Go Back</a>
             </center>
             """
 
     # -----------------------------
-    # LOAD AVAILABLE SCHEDULES
-    # -----------------------------
-    # -----------------------------
-    # LOAD AVAILABLE SCHEDULES
+    # LOAD AVAILABLE SCHEDULES (GET request)
     # -----------------------------
     reconnect_db()
 
@@ -672,11 +670,13 @@ Thank you for choosing Smart Hospital.
         FROM doctor_schedule s
         JOIN doctors d
         ON s.doctor_id = d.doctor_id
+        WHERE s.status = 'Available'  -- Only show available slots
+        ORDER BY s.available_date, s.start_time
     """)
 
     schedules = cursor.fetchall()
 
-    print("Schedules =", schedules)
+    print("Schedules =", schedules)  # Remove in production
 
     return render_template(
         "book.html",
@@ -2111,6 +2111,39 @@ def appointment_pdf(id):
     )
 
 import os
+
+@app.route("/appointments")
+def appointments():
+
+    if "patient_id" not in session:
+        return redirect("/login")
+
+    reconnect_db()
+
+    patient_id = session["patient_id"]
+
+    cursor.execute("""
+        SELECT
+            a.appointment_id,
+            d.name,
+            d.specialization,
+            a.appointment_date,
+            a.appointment_time,
+            a.status
+        FROM appointments a
+        JOIN doctors d
+            ON a.doctor_id = d.doctor_id
+        WHERE a.patient_id=%s
+        ORDER BY a.appointment_date DESC,
+                 a.appointment_time DESC
+    """, (patient_id,))
+
+    appointments = cursor.fetchall()
+
+    return render_template(
+        "appointments.html",
+        appointments=appointments
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
