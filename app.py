@@ -655,70 +655,33 @@ Thank you for choosing Smart Hospital.
     # -----------------------------
     # LOAD AVAILABLE SCHEDULES
     # -----------------------------
-   # -----------------------------
+    # -----------------------------
     # LOAD AVAILABLE SCHEDULES
     # -----------------------------
     reconnect_db()
 
     cursor.execute("""
         SELECT
-            ds.schedule_id,
+            s.schedule_id,
             d.name,
             d.specialization,
-            ds.available_date,
-            ds.start_time,
-            ds.end_time
-        FROM doctor_schedule ds
+            s.available_date,
+            s.start_time,
+            s.end_time,
+            s.status
+        FROM doctor_schedule s
         JOIN doctors d
-        ON ds.doctor_id = d.doctor_id
-        WHERE ds.status = 'Available'
-        ORDER BY ds.available_date, ds.start_time
+        ON s.doctor_id = d.doctor_id
     """)
 
     schedules = cursor.fetchall()
 
-    print("Schedules:", schedules)
+    print("Schedules =", schedules)
 
     return render_template(
         "book.html",
         schedules=schedules
     )
-
-# ==========================
-# My Appointments
-# ==========================
-@app.route("/appointments")
-def appointments():
-
-    if "patient_id" not in session:
-        return redirect("/login")
-
-    reconnect_db()
-
-    patient_id = session["patient_id"]
-
-    cursor.execute("""
-        SELECT
-            a.appointment_id,
-            d.name,
-            d.specialization,
-            a.appointment_date,
-            a.appointment_time,
-            a.status
-        FROM appointments a
-        JOIN doctors d
-            ON a.doctor_id = d.doctor_id
-        WHERE a.patient_id=%s
-        ORDER BY a.appointment_date
-    """, (patient_id,))
-
-    appointments = cursor.fetchall()
-
-    return render_template(
-        "appointments.html",
-        appointments=appointments
-    )
-
 # ==========================
 # Logout
 # ==========================
